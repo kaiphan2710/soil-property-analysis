@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+
+# Local runtime configuration.
+hyperspectral_client_config.ini
+
+# Large local capture data. Use Git LFS or external object storage if these
+# files need to be versioned.
+microplastic/
