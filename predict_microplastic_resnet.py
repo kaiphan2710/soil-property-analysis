@@ -4,7 +4,7 @@ Run inference on one exported dish NPZ and save a predicted mask PNG.
 Example:
     python predict_microplastic_resnet.py \
       --checkpoint checkpoints/hyperspectral_resnet_segmenter.pt \
-      --npz microplastic/S1_S4_S7_S10_2026_06_30_14_54_02/Merged/S1_S4_S7_S10_FX10FX17_2026_06_30_14_54_02_s1.npz \
+      --npz microplastic/S1_S4_S7_S10_2026_06_30_14_54_02/Merged/S1_S4_S7_S10_FX10FX17_2026_06_30_14_54_02_S1.npz \
       --out prediction_s1.png
 """
 

@@ -82,6 +82,35 @@ def replace_first_conv(
     return model
 
 
+def _num_groups_for_channels(channels: int, max_groups: int = 32) -> int:
+    for groups in range(min(max_groups, channels), 0, -1):
+        if channels % groups == 0:
+            return groups
+    return 1
+
+
+def replace_batchnorm_with_groupnorm(module: nn.Module) -> nn.Module:
+    """
+    BatchNorm can fail with batch_size=1 when feature maps become 1x1.
+    GroupNorm is more stable for this project because we train large
+    hyperspectral images one at a time on a laptop.
+    """
+    for name, child in list(module.named_children()):
+        if isinstance(child, nn.BatchNorm2d):
+            channels = child.num_features
+            setattr(
+                module,
+                name,
+                nn.GroupNorm(
+                    num_groups=_num_groups_for_channels(channels),
+                    num_channels=channels,
+                ),
+            )
+        else:
+            replace_batchnorm_with_groupnorm(child)
+    return module
+
+
 class HyperspectralResNetClassifier(nn.Module):
     """
     ResNet classifier for hyperspectral images or patches.
@@ -110,6 +139,7 @@ class HyperspectralResNetClassifier(nn.Module):
             in_channels=in_channels,
             strategy="average_rgb" if pretrained_rgb else "random",
         )
+        model = replace_batchnorm_with_groupnorm(model)
         model.fc = nn.Linear(model.fc.in_features, num_classes)
         self.model = model
 
@@ -135,6 +165,7 @@ class HyperspectralResNetEncoder(nn.Module):
             in_channels=in_channels,
             strategy="average_rgb" if pretrained_rgb else "random",
         )
+        model = replace_batchnorm_with_groupnorm(model)
 
         self.stem = nn.Sequential(model.conv1, model.bn1, model.relu)
         self.maxpool = model.maxpool
@@ -207,10 +238,10 @@ class HyperspectralResNetSegmenter(nn.Module):
 
         self.smooth = nn.Sequential(
             nn.Conv2d(fpn_channels, fpn_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(fpn_channels),
+            nn.GroupNorm(_num_groups_for_channels(fpn_channels), fpn_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(fpn_channels, fpn_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(fpn_channels),
+            nn.GroupNorm(_num_groups_for_channels(fpn_channels), fpn_channels),
             nn.ReLU(inplace=True),
         )
         self.classifier = nn.Conv2d(fpn_channels, num_classes, kernel_size=1)

@@ -2,8 +2,8 @@
 Data loading for exported hyperspectral microplastic dish crops.
 
 Expected input files are dish-level NPZ exports from the labelling app, for example:
-    S1_S4_S7_S10_FX10FX17_..._s1.npz
-    S1_S4_S7_S10_FX10FX17_..._s4.npz
+    S1_S4_S7_S10_FX10FX17_..._S1.npz
+    S1_S4_S7_S10_FX10FX17_..._S4.npz
 
 Each NPZ should contain:
     datacube:          numpy array with shape (bands, height, width)
@@ -25,6 +25,7 @@ import argparse
 import json
 import random
 from pathlib import Path
+import re
 from typing import Dict, Iterable, List, Literal, Optional, Sequence, Tuple
 
 import numpy as np
@@ -77,6 +78,38 @@ def find_npz_files(folder: str, pattern: str = "*.npz") -> List[Path]:
     return sorted(Path(folder).expanduser().glob(pattern))
 
 
+def _npz_scalar_as_str(npz_file, key: str) -> str:
+    if key not in npz_file.files:
+        return ""
+    value = npz_file[key]
+    if hasattr(value, "item"):
+        value = value.item()
+    return str(value)
+
+
+def _is_dish_npz(path: Path) -> bool:
+    """
+    Keep only dish-level ROI exports such as S1/S2/S10.
+
+    This avoids accidentally training on individual target exports like PP/PET/PS
+    or files whose folder/name prefix happens to contain S1/S4.
+    """
+    try:
+        with np.load(path, allow_pickle=True) as npz_file:
+            export_type = _npz_scalar_as_str(npz_file, "type").lower()
+            export_name = _npz_scalar_as_str(npz_file, "name")
+    except Exception:
+        return False
+
+    if export_type and export_type != "roi":
+        return False
+
+    if export_name and re.fullmatch(r"[sS]\d+", export_name.strip()):
+        return True
+
+    return re.search(r"_[sS]\d+\.npz$", path.name) is not None
+
+
 def split_dataset(
     dataset: Dataset,
     val_fraction: float = 0.2,
@@ -92,7 +125,7 @@ def split_dataset(
 
 def build_dataloaders(
     folder: str,
-    pattern: str = "*_s*.npz",
+    pattern: str = "*.npz",
     task: TaskType = "detection",
     batch_size: int = 2,
     val_fraction: float = 0.2,
@@ -255,9 +288,12 @@ class MicroplasticDishDataset(Dataset):
         band_indices: Optional[Sequence[int]] = None,
         normalise: str = "minmax",
         skip_unknown_classes: bool = True,
+        require_dish_roi: bool = True,
     ):
         self.paths = [Path(p).expanduser() for p in npz_paths]
         self.paths = [p for p in self.paths if p.suffix.lower() == ".npz"]
+        if require_dish_roi:
+            self.paths = [p for p in self.paths if _is_dish_npz(p)]
         self.task = task
         self.class_to_id = class_to_id or DEFAULT_CLASS_TO_ID
         self.band_indices = list(band_indices) if band_indices is not None else None
@@ -273,7 +309,7 @@ class MicroplasticDishDataset(Dataset):
     def from_folder(
         cls,
         folder: str,
-        pattern: str = "*_s*.npz",
+        pattern: str = "*.npz",
         **kwargs,
     ) -> "MicroplasticDishDataset":
         paths = find_npz_files(folder, pattern=pattern)
@@ -384,7 +420,7 @@ def _set_seed(seed: int):
 def main():
     parser = argparse.ArgumentParser(description="Inspect microplastic dish NPZ data loading.")
     parser.add_argument("folder", help="Folder containing exported dish .npz files")
-    parser.add_argument("--pattern", default="*_s*.npz", help="Glob pattern for dish files")
+    parser.add_argument("--pattern", default="**/Merged/*.npz", help="Glob pattern for exported NPZ files")
     parser.add_argument("--task", choices=["detection", "segmentation"], default="detection")
     parser.add_argument("--normalise", choices=["minmax", "snv", "none"], default="minmax")
     parser.add_argument(

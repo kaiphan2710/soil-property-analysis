@@ -2,7 +2,7 @@
 Minimal runnable training/test pipeline for hyperspectral ResNet segmentation.
 
 Run from PROJECT root:
-    python train_microplastic_resnet.py --data-root microplastic --pattern "**/Merged/*_s*.npz" --epochs 1 --max-batches 2
+    python train_microplastic_resnet.py --data-root microplastic --pattern "**/Merged/*.npz" --epochs 1 --max-batches 2
 
 This script is intentionally small:
     - loads dish-level NPZ files
@@ -178,7 +178,7 @@ def run_epoch(
 def main():
     parser = argparse.ArgumentParser(description="Train/test hyperspectral ResNet segmentation.")
     parser.add_argument("--data-root", default="microplastic", help="Dataset root folder")
-    parser.add_argument("--pattern", default="**/Merged/*_s*.npz", help="Glob pattern under data root")
+    parser.add_argument("--pattern", default="**/Merged/*.npz", help="Glob pattern under data root")
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1e-4)
