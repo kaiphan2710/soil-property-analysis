@@ -1,0 +1,29 @@
+Samples: 4
+Features: 58
+Train samples: 4
+Val samples: 4
+{
+  "mae_mean": 0.743781566619873,
+  "rmse_mean": 1.1637804342484042,
+  "r2_mean": -0.5209667682647705,
+  "per_target": {
+    "pp_percent": {
+      "mae": 1.1598542928695679,
+      "rmse": 1.6506064369807378
+    },
+    "pet_percent": {
+      "mae": 0.3798397481441498,
+      "rmse": 0.48554694006160626
+    },
+    "ps_percent": {
+      "mae": 0.3458653688430786,
+      "rmse": 0.45388580446928045
+    },
+    "total_percent": {
+      "mae": 1.089566707611084,
+      "rmse": 1.5004232921981964
+    }
+  }
+}
+Saved regressor: checkpoints/content_regressor_rf_real_v2.joblib
+Saved metrics: checkpoints/content_regressor_rf_real_v2.metrics.json
